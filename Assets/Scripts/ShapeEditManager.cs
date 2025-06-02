@@ -12,37 +12,201 @@ public class ShapeEditManager : MonoBehaviour
     
     void Awake()
     {
-        Instance = this;
-        Debug.Log("ShapeEditManager Instance created");
+        if (Instance == null)
+        {
+            Instance = this;
+            Debug.Log("ShapeEditManager Instance created");
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
+    }
+    void Update()
+    {
+        // Continuously monitor currentShape
+        if (currentShape == null && currentPanelInstance != null)
+        {
+            Debug.LogWarning("currentShape is NULL but panel is open!");
+        }
     }
     
     public void OpenEditPanel(SelectableShape shape)
     {
-        Debug.Log("OpenEditPanel called for: " + shape.gameObject.name);
-        
-        if (editPanel == null)
-        {
-            Debug.LogError("EditPanel prefab is not assigned in ShapeEditManager!");
-            return;
-        }
+        Debug.Log($"=== OpenEditPanel START ===");
+        Debug.Log($"OpenEditPanel called for: {shape.gameObject.name}");
         
         currentShape = shape;
+        Debug.Log($"Current shape set to: {currentShape.gameObject.name}");
+        Debug.Log($"Current shape instance ID: {currentShape.GetInstanceID()}");
         
-        // Close existing panel first
-        CloseEditPanel();
+        // Don't call CloseEditPanel here - it sets currentShape to null!
+        if (currentPanelInstance != null)
+        {
+            Debug.Log("Destroying existing panel WITHOUT clearing currentShape");
+            Destroy(currentPanelInstance);
+            currentPanelInstance = null;
+        }
         
-        // Calculate VR-friendly position
         Vector3 panelPosition = CalculateVRPanelPosition(shape.transform.position);
         Quaternion panelRotation = CalculateVRPanelRotation(panelPosition);
-    
+        
         currentPanelInstance = Instantiate(editPanel, panelPosition, panelRotation);
         currentPanelInstance.SetActive(true);
-    
-        Debug.Log("VR Panel created at: " + panelPosition);
-        Debug.Log("Distance from user: " + Vector3.Distance(panelPosition, Camera.main.transform.position));
         
+        Debug.Log($"After panel creation - currentShape: {(currentShape != null ? currentShape.gameObject.name : "NULL")}");
+        // AUTO-WIRE the UI events after instantiation
+        WireUpPanelEvents();
+        UpdatePanelToCurrentShape();
+
+        // Update UI to match current shape (optional)
+        Debug.Log($"=== OpenEditPanel END - currentShape: {(currentShape != null ? currentShape.gameObject.name : "NULL")} ===");
         
     }
+    
+private void WireUpPanelEvents()
+    {
+        Debug.Log($"=== WireUpPanelEvents START - currentShape: {(currentShape != null ? currentShape.gameObject.name : "NULL")} ===");
+        
+        if (currentPanelInstance == null) return;
+        
+        Toggle[] toggles = currentPanelInstance.GetComponentsInChildren<Toggle>();
+        Button[] buttons = currentPanelInstance.GetComponentsInChildren<Button>();
+        Slider[] sliders = currentPanelInstance.GetComponentsInChildren<Slider>();
+        
+        Debug.Log($"Found {toggles.Length} toggles, {buttons.Length} buttons, {sliders.Length} sliders");
+        
+        foreach (Toggle toggle in toggles)
+        {
+            string toggleName = toggle.gameObject.name.ToLower();
+            Debug.Log($"Wiring toggle: {toggle.gameObject.name}");
+            
+            if (toggleName.Contains("red"))
+            {
+                toggle.onValueChanged.RemoveAllListeners();
+                toggle.onValueChanged.AddListener((bool isOn) => { 
+                    Debug.Log($"Red toggle event - isOn: {isOn}, currentShape: {(currentShape != null ? currentShape.gameObject.name : "NULL")}");
+                    if (isOn) SetColorRed(); 
+                });
+            }
+            else if (toggleName.Contains("blue"))
+            {
+                toggle.onValueChanged.RemoveAllListeners();
+                toggle.onValueChanged.AddListener((bool isOn) => { 
+                    Debug.Log($"Blue toggle event - isOn: {isOn}, currentShape: {(currentShape != null ? currentShape.gameObject.name : "NULL")}");
+                    if (isOn) SetColorBlue(); 
+                });
+            }
+            else if (toggleName.Contains("green"))
+            {
+                toggle.onValueChanged.RemoveAllListeners();
+                toggle.onValueChanged.AddListener((bool isOn) => { 
+                    Debug.Log($"Green toggle event - isOn: {isOn}, currentShape: {(currentShape != null ? currentShape.gameObject.name : "NULL")}");
+                    if (isOn) SetColorGreen(); 
+                });
+            }
+            else if (toggleName.Contains("yellow"))
+            {
+                toggle.onValueChanged.RemoveAllListeners();
+                toggle.onValueChanged.AddListener((bool isOn) => { 
+                    Debug.Log($"Yellow toggle event - isOn: {isOn}, currentShape: {(currentShape != null ? currentShape.gameObject.name : "NULL")}");
+                    if (isOn) SetColorYellow(); 
+                });
+            }
+        }
+        
+        foreach (Button button in buttons)
+        {
+            string buttonName = button.gameObject.name.ToLower();
+            Debug.Log($"Wiring button: {button.gameObject.name}");
+            
+            if (buttonName.Contains("close"))
+            {
+                button.onClick.RemoveAllListeners();
+                button.onClick.AddListener(() => {
+                    Debug.Log("Close button pressed");
+                    CloseEditPanel();
+                });
+            }
+        }
+        
+        foreach (Slider slider in sliders)
+        {
+            Debug.Log($"Wiring slider: {slider.gameObject.name}");
+            slider.onValueChanged.RemoveAllListeners();
+            slider.onValueChanged.AddListener((float value) => {
+                Debug.Log($"Slider event - value: {value}, currentShape: {(currentShape != null ? currentShape.gameObject.name : "NULL")}");
+                ChangeShapeSize(value);
+            });
+        }
+        
+        Debug.Log($"=== WireUpPanelEvents END - currentShape: {(currentShape != null ? currentShape.gameObject.name : "NULL")} ===");
+    }
+    private void UpdatePanelToCurrentShape()
+    {
+        if (currentPanelInstance == null || currentShape == null) return;
+        
+        Slider sizeSlider = currentPanelInstance.GetComponentInChildren<Slider>();
+        if (sizeSlider != null)
+        {
+            Debug.Log($"Setting slider to current shape size: {currentShape.shapeSize}");
+            sizeSlider.SetValueWithoutNotify(currentShape.shapeSize);
+        }
+    }
+
+    public void SetColorRed() 
+    { 
+        Debug.Log($"SetColorRed called! currentShape: {(currentShape != null ? currentShape.gameObject.name : "NULL")}"); 
+        if (currentShape != null)
+        {
+            ChangeShapeColor(Color.red);
+        }
+        else
+        {
+            Debug.LogError("currentShape is NULL in SetColorRed!");
+        }
+    }
+    
+    // Add similar debug to other color methods...
+    public void SetColorBlue() 
+    { 
+        Debug.Log($"SetColorBlue called! currentShape: {(currentShape != null ? currentShape.gameObject.name : "NULL")}"); 
+        if (currentShape != null)
+        {
+            ChangeShapeColor(Color.blue);
+        }
+        else
+        {
+            Debug.LogError("currentShape is NULL in SetColorBlue!");
+        }
+    }
+    
+    public void SetColorGreen() 
+    { 
+        Debug.Log($"SetColorGreen called! currentShape: {(currentShape != null ? currentShape.gameObject.name : "NULL")}"); 
+        if (currentShape != null)
+        {
+            ChangeShapeColor(Color.green);
+        }
+        else
+        {
+            Debug.LogError("currentShape is NULL in SetColorGreen!");
+        }
+    }
+    
+    public void SetColorYellow() 
+    { 
+        Debug.Log($"SetColorYellow called! currentShape: {(currentShape != null ? currentShape.gameObject.name : "NULL")}"); 
+        if (currentShape != null)
+        {
+            ChangeShapeColor(Color.yellow);
+        }
+        else
+        {
+            Debug.LogError("currentShape is NULL in SetColorYellow!");
+        }
+    }
+    
     private Vector3 CalculateVRPanelPosition(Vector3 shapePosition)
     {
         Vector3 userPosition = Camera.main.transform.position;
@@ -73,11 +237,31 @@ public class ShapeEditManager : MonoBehaviour
             // Add 180-degree Y rotation if panel is backwards
             return lookRotation * Quaternion.Euler(0, 180, 0);
     }
+    public void ChangeShapeSize(float sliderValue)
+    {
+        Debug.Log($"ChangeShapeSize called with slider value: {sliderValue}");
+    
+        if (currentShape != null)
+        {
+            // Map slider value (0-1) to size multiplier (1-3)
+            float sizeMultiplier = Mathf.Lerp(1f, 3f, sliderValue);
+        
+            Debug.Log($"Slider {sliderValue} mapped to size multiplier: {sizeMultiplier}");
+        
+            currentShape.UpdateSize(sizeMultiplier);
+        }
+        else
+        {
+            Debug.LogError("currentShape is NULL in ChangeShapeSize!");
+        }
+    }
+
+
     public void CloseEditPanel()
     {
+        Debug.Log("=== CloseEditPanel called ===");
         if (currentPanelInstance != null)
         {
-            Debug.Log("Closing panel");
             Destroy(currentPanelInstance);
             currentPanelInstance = null;
         }
@@ -86,125 +270,24 @@ public class ShapeEditManager : MonoBehaviour
         {
             currentShape.DeselectShape();
             currentShape = null;
+            Debug.Log("currentShape set to NULL in CloseEditPanel");
         }
     }
-    private void SetupPanelUI()
-    {
-        if (currentPanelInstance == null) return;
-        
-        // Find UI elements in the panel (adjust names to match your UI)
-        Toggle redToggle = FindToggleByName("Red");
-        Toggle blueToggle = FindToggleByName("Blue");
-        Toggle greenToggle = FindToggleByName("Green");
-        Toggle yellowToggle = FindToggleByName("Yellow");
-        Button closeButton = FindButtonByName("CloseButton");
-        Slider sizeSlider = currentPanelInstance.GetComponentInChildren<Slider>();
-        
-        // Wire up color buttons
-        if (redToggle != null)
-            redToggle.onValueChanged.AddListener((bool isOn) => { if (isOn) ChangeShapeColor(Color.red); });
-        if (blueToggle != null)
-            blueToggle.onValueChanged.AddListener((bool isOn) => { if (isOn) ChangeShapeColor(Color.blue); });
-        if (greenToggle != null)
-            greenToggle.onValueChanged.AddListener((bool isOn) => { if (isOn) ChangeShapeColor(Color.green); });
-        if (yellowToggle != null)
-            yellowToggle.onValueChanged.AddListener((bool isOn) => { if (isOn) ChangeShapeColor(Color.yellow); });
-        
-        // Wire up close button
-        if (closeButton != null)
-            closeButton.onClick.AddListener(CloseEditPanel);
-        
-        // Wire up size slider
-        if (sizeSlider != null)
-        {
-            sizeSlider.value = currentShape.shapeSize; // Set current size
-            sizeSlider.onValueChanged.AddListener(ChangeShapeSize);
-        }
-        
-// Set the correct toggle based on current shape color
-        SetCurrentColorToggle(redToggle, blueToggle, greenToggle, yellowToggle);
     
-        Debug.Log($"UI Setup: Red={redToggle!=null}, Blue={blueToggle!=null}, Green={greenToggle!=null}, Yellow={yellowToggle!=null}, Close={closeButton!=null}, Slider={sizeSlider!=null}");
-    }
-    
-    private Button FindButtonByName(string buttonName)
+    private void ChangeShapeColor(Color newColor)
     {
-        Button[] buttons = currentPanelInstance.GetComponentsInChildren<Button>();
-        foreach (Button button in buttons)
-        {
-            if (button.gameObject.name.Contains(buttonName.Replace("Button", ""))) // Flexible naming
-            {
-                return button;
-            }
-        }
-        Debug.LogWarning($"Button '{buttonName}' not found in panel");
-        return null;
-    }
-    
-    // UI Event Methods
-    public void ChangeShapeColor(Color newColor)
-    {
+        Debug.Log($"ChangeShapeColor called with color: {newColor}");
         if (currentShape != null)
         {
-            Debug.Log($"Changing shape color to: {newColor}");
             currentShape.UpdateColor(newColor);
         }
-    }
-    
-    public void ChangeShapeSize(float newSize)
-    {
-        if (currentShape != null)
-        {
-            Debug.Log($"Changing shape size to: {newSize}");
-            currentShape.UpdateSize(newSize);
-        }
-    }
-    
-    private Toggle FindToggleByName(string colorName)
-    {
-        Toggle[] toggles = currentPanelInstance.GetComponentsInChildren<Toggle>();
-        foreach (Toggle toggle in toggles)
-        {
-            if (toggle.gameObject.name.ToLower().Contains(colorName.ToLower()))
-            {
-                return toggle;
-            }
-        }
-        Debug.LogWarning($"Toggle for '{colorName}' not found in panel");
-        return null;
-    }
-
-    private void SetCurrentColorToggle(Toggle redToggle, Toggle blueToggle, Toggle greenToggle, Toggle yellowToggle)
-    {
-        if (currentShape == null) return;
-    
-        Color shapeColor = currentShape.shapeColor;
-    
-        // Clear all toggles first (without triggering events)
-        redToggle?.SetIsOnWithoutNotify(false);
-        blueToggle?.SetIsOnWithoutNotify(false);
-        greenToggle?.SetIsOnWithoutNotify(false);
-        yellowToggle?.SetIsOnWithoutNotify(false);
-    
-        // Set the matching color toggle
-        if (IsColorMatch(shapeColor, Color.red))
-            redToggle?.SetIsOnWithoutNotify(true);
-        else if (IsColorMatch(shapeColor, Color.blue))
-            blueToggle?.SetIsOnWithoutNotify(true);
-        else if (IsColorMatch(shapeColor, Color.green))
-            greenToggle?.SetIsOnWithoutNotify(true);
-        else if (IsColorMatch(shapeColor, Color.yellow))
-            yellowToggle?.SetIsOnWithoutNotify(true);
         else
-            redToggle?.SetIsOnWithoutNotify(true); // Default to red if no match
+        {
+            Debug.LogError("currentShape is NULL in ChangeShapeColor!");
+        }
     }
-
-    private bool IsColorMatch(Color a, Color b)
+    public bool IsPanelCurrentlyOpen()
     {
-        float tolerance = 0.1f;
-        return Mathf.Abs(a.r - b.r) < tolerance && 
-               Mathf.Abs(a.g - b.g) < tolerance && 
-               Mathf.Abs(a.b - b.b) < tolerance;
+        return currentPanelInstance != null;
     }
- 
 }

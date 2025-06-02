@@ -19,37 +19,48 @@ public class SelectableShape : MonoBehaviour
         originalMaterial = GetComponent<Renderer>().material;
         originalScale = transform.localScale;
         gameObject.tag = "SpawnedShape";
+        // Set default size
+        shapeSize = 1f; // Start at 1x (original size)
+        
+        // Store the original color
+        shapeColor = GetComponent<Renderer>().material.color;
     }
     
     // These will be called by the Unity Events
     public void OnHover() 
     {
         Debug.Log("Hovering over: " + gameObject.name);
-        ShowOutline();
-    }
     
+        // Don't show outline if this object is selected OR if any panel is open
+        if (!isSelected && !IsPanelOpen())
+        {
+            ShowOutline();
+        }
+    }
+    private bool IsPanelOpen()
+    {
+        // Check if any edit panel is currently open
+        return ShapeEditManager.Instance != null && ShapeEditManager.Instance.IsPanelCurrentlyOpen();
+    }
     public void OnHoverExit()
     {
         Debug.Log("Hover exit: " + gameObject.name);
-        if (!isSelected) HideOutline();
+    
+        // Only hide outline if not selected
+        if (!isSelected)
+        {
+            HideOutline();
+        }
     }
     
     public void OnSelect() 
     {
-        Debug.Log("*** SELECT EVENT FIRED on " + gameObject.name + " ***");
-    
-        // Debug the manager
-        if (ShapeEditManager.Instance == null)
+        Debug.Log("Selected: " + gameObject.name);
+        SelectShape();
+        if (ShapeEditManager.Instance != null)
         {
-            Debug.LogError("ShapeEditManager.Instance is NULL! Make sure you have a ShapeEditManager in the scene.");
-        }
-        else
-        {
-            Debug.Log("ShapeEditManager found, calling OpenEditPanel");
             ShapeEditManager.Instance.OpenEditPanel(this);
         }
-    
-        SelectShape();
     }
     
     private void ShowOutline()
@@ -125,9 +136,12 @@ public class SelectableShape : MonoBehaviour
         {
             if (shape != this) shape.DeselectShape();
         }
-        
+    
         isSelected = true;
-        ShowOutline();
+    
+        // When selected, we don't want the hover outline
+        // The panel being open indicates selection
+        HideOutline();
     }
     
     public void DeselectShape()
@@ -136,20 +150,28 @@ public class SelectableShape : MonoBehaviour
         HideOutline();
     }
     
+    
     public void UpdateColor(Color newColor)
     {
         shapeColor = newColor;
         GetComponent<Renderer>().material.color = newColor;
+        
+        Debug.Log($"Updated {gameObject.name} color to: {newColor}");
     }
     
-    public void UpdateSize(float newSize)
+    public void UpdateSize(float newSizeMultiplier)
     {
-        shapeSize = newSize;
-        transform.localScale = originalScale * newSize;
+        shapeSize = newSizeMultiplier;
         
+        // Apply the multiplier to the original scale
+        transform.localScale = originalScale * newSizeMultiplier;
+        
+        // Update outline if it exists
         if (outlineInstance != null)
         {
-            outlineInstance.transform.localScale = transform.localScale * 1.1f;
+            outlineInstance.transform.localScale = transform.localScale * 1.08f;
         }
+        
+        Debug.Log($"Updated {gameObject.name} scale to: {transform.localScale} (multiplier: {newSizeMultiplier})");
     }
 }
