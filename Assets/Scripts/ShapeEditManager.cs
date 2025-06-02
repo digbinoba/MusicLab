@@ -145,15 +145,52 @@ private void WireUpPanelEvents()
     private void UpdatePanelToCurrentShape()
     {
         if (currentPanelInstance == null || currentShape == null) return;
-        
+    
+        Debug.Log($"Updating panel UI for {currentShape.gameObject.name}: Color={currentShape.shapeColor}, Size={currentShape.shapeSize}");
+    
+        // Update size slider
         Slider sizeSlider = currentPanelInstance.GetComponentInChildren<Slider>();
         if (sizeSlider != null)
         {
-            Debug.Log($"Setting slider to current shape size: {currentShape.shapeSize}");
-            sizeSlider.SetValueWithoutNotify(currentShape.shapeSize);
+            float sliderValue = Mathf.InverseLerp(1f, 3f, currentShape.shapeSize);
+            sizeSlider.SetValueWithoutNotify(sliderValue);
+            Debug.Log($"Set slider to {sliderValue} (from size {currentShape.shapeSize})");
         }
+    
+        // Update color toggles to match current color
+        SetCurrentColorToggle();
     }
-
+    private void SetCurrentColorToggle()
+    {
+        if (currentPanelInstance == null || currentShape == null) return;
+    
+        Toggle[] toggles = currentPanelInstance.GetComponentsInChildren<Toggle>();
+        Color currentColor = currentShape.shapeColor;
+    
+        foreach (Toggle toggle in toggles)
+        {
+            string toggleName = toggle.gameObject.name.ToLower();
+            bool shouldBeOn = false;
+        
+            if (toggleName.Contains("red") && IsColorMatch(currentColor, Color.red))
+                shouldBeOn = true;
+            else if (toggleName.Contains("blue") && IsColorMatch(currentColor, Color.blue))
+                shouldBeOn = true;
+            else if (toggleName.Contains("green") && IsColorMatch(currentColor, Color.green))
+                shouldBeOn = true;
+            else if (toggleName.Contains("yellow") && IsColorMatch(currentColor, Color.yellow))
+                shouldBeOn = true;
+        
+            toggle.SetIsOnWithoutNotify(shouldBeOn);
+        }
+    
+        Debug.Log($"Updated toggles to match current color: {currentColor}");
+    }
+    private bool IsColorMatch(Color a, Color b)
+    {
+        float tolerance = 0.1f;
+        return Vector3.Distance(new Vector3(a.r, a.g, a.b), new Vector3(b.r, b.g, b.b)) < tolerance;
+    }
     public void SetColorRed() 
     { 
         Debug.Log($"SetColorRed called! currentShape: {(currentShape != null ? currentShape.gameObject.name : "NULL")}"); 
