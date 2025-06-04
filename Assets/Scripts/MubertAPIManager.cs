@@ -169,7 +169,8 @@ public class MubertAPIManager : MonoBehaviour
         info.AppendLine("\nShape Details:");
         foreach (SelectableShape shape in shapes)
         {
-            info.AppendLine($"• {shape.shapeType}: {shape.emotionalColor} (Size: {shape.shapeSize:F1})");
+            info.AppendLine($"• {shape.shapeType}: {shape.emotionalColor} {shape.advancedData.materialType}");
+            info.AppendLine($"  Size: {shape.shapeSize:F1}, Anim: {shape.advancedData.animationType}");
         }
         
         return info.ToString();

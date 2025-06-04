@@ -416,56 +416,32 @@ public class SelectableShape : MonoBehaviour
     private void ApplyEmotionalColorToRenderer()
     {
         Debug.Log($"=== ApplyEmotionalColorToRenderer START ===");
-    Debug.Log($"GameObject: {gameObject.name}");
-    Debug.Log($"Current emotional color: {advancedData.emotionalColor}");
+        Debug.Log($"GameObject: {gameObject.name}");
+        Debug.Log($"Current emotional color: {advancedData.emotionalColor}");
     
-    if (persistentMaterial != null)
-    {
-        Color renderColor = EmotionalColorUtility.GetEmotionalColor(advancedData.emotionalColor);
-        Debug.Log($"Target render color: {renderColor}");
-        Debug.Log($"Material shader: {persistentMaterial.shader.name}");
-        
-        // For URP, we need to set _BaseColor specifically
-        if (persistentMaterial.shader.name.Contains("Universal Render Pipeline") || 
-            persistentMaterial.shader.name.Contains("URP") ||
-            persistentMaterial.HasProperty("_BaseColor"))
+        if (persistentMaterial != null)
         {
-            Debug.Log("Using URP _BaseColor property");
-            persistentMaterial.SetColor("_BaseColor", renderColor);
-            
-            // Also set the main texture color if it exists
-            if (persistentMaterial.HasProperty("_BaseMap"))
-            {
-                // Keep existing texture but change color
-                persistentMaterial.SetColor("_BaseColor", renderColor);
-            }
+            Color renderColor = EmotionalColorUtility.GetEmotionalColor(advancedData.emotionalColor);
+            Debug.Log($"Target render color: {renderColor}");
+            Debug.Log($"Material shader: {persistentMaterial.shader.name}");
+        
+            // Apply the visual material properties INSTEAD of just setting color
+            ApplyVisualMaterial(advancedData.materialType);
+        
+            Debug.Log($"Applied emotional color {advancedData.emotionalColor} with material {advancedData.materialType}");
+        
+            // Force the renderer to use the updated material
+            Renderer renderer = GetComponent<Renderer>();
+            renderer.material = persistentMaterial;
+        
+            Debug.Log($"Final material - Metallic: {persistentMaterial.GetFloat("_Metallic")}, Smoothness: {persistentMaterial.GetFloat("_Smoothness")}");
         }
         else
         {
-            Debug.Log("Using standard color property");
-            persistentMaterial.color = renderColor;
+            Debug.LogError($"persistentMaterial is NULL on {gameObject.name}!");
         }
-        
-        // Double-check what we actually set
-        Debug.Log($"Material _BaseColor after setting: {persistentMaterial.GetColor("_BaseColor")}");
-        Debug.Log($"Material color after setting: {persistentMaterial.color}");
-        
-        // Force the renderer to use the updated material
-        Renderer renderer = GetComponent<Renderer>();
-        renderer.material = persistentMaterial;
-        
-        Debug.Log($"Renderer material color: {renderer.material.color}");
-        if (renderer.material.HasProperty("_BaseColor"))
-        {
-            Debug.Log($"Renderer material _BaseColor: {renderer.material.GetColor("_BaseColor")}");
-        }
-    }
-    else
-    {
-        Debug.LogError($"persistentMaterial is NULL on {gameObject.name}!");
-    }
     
-    Debug.Log($"=== ApplyEmotionalColorToRenderer END ===");
+        Debug.Log($"=== ApplyEmotionalColorToRenderer END ===");
     }
     
     public void UpdateEmotionalColor(EmotionalColor newEmotionalColor)
@@ -643,6 +619,10 @@ public class SelectableShape : MonoBehaviour
     {
         Debug.Log($"UpdateMaterialType called: OLD={advancedData.materialType}, NEW={materialType}");
         advancedData.materialType = materialType;
+    
+        // Apply the visual material immediately
+        ApplyVisualMaterial(materialType);
+    
         Debug.Log($"Updated {gameObject.name} material to: {advancedData.materialType}");
     }
     
@@ -662,4 +642,122 @@ public class SelectableShape : MonoBehaviour
         
         return advancedData;
     }
+
+private void ApplyVisualMaterial(MaterialType materialType)
+{
+    if (persistentMaterial != null)
+    {
+        // Get current emotional color
+        Color currentColor = EmotionalColorUtility.GetEmotionalColor(advancedData.emotionalColor);
+        
+        // Apply material-specific properties while keeping the emotional color
+        switch (materialType)
+        {
+            case MaterialType.Smooth:
+                ApplySmoothMaterial(currentColor);
+                break;
+            case MaterialType.Rough:
+                ApplyRoughMaterial(currentColor);
+                break;
+            case MaterialType.Metallic:
+                ApplyMetallicMaterial(currentColor);
+                break;
+            case MaterialType.Glass:
+                ApplyGlassMaterial(currentColor);
+                break;
+            case MaterialType.Wood:
+                ApplyWoodMaterial(currentColor);
+                break;
+            case MaterialType.Fabric:
+                ApplyFabricMaterial(currentColor);
+                break;
+        }
+        
+        Debug.Log($"Applied visual material: {materialType} with color: {currentColor}");
+    }
+}
+
+private void ApplySmoothMaterial(Color baseColor)
+{
+    // Smooth = Clean, matte finish
+    persistentMaterial.SetColor("_BaseColor", baseColor);
+    persistentMaterial.SetFloat("_Metallic", 0.0f);
+    persistentMaterial.SetFloat("_Smoothness", 0.9f); // Very smooth
+    
+    // Disable emission for clean look
+    persistentMaterial.SetColor("_EmissionColor", Color.black);
+    persistentMaterial.DisableKeyword("_EMISSION");
+}
+
+private void ApplyRoughMaterial(Color baseColor)
+{
+    // Rough = Textured, matte, slightly darkened
+    Color roughColor = baseColor * 0.8f; // Darken slightly
+    persistentMaterial.SetColor("_BaseColor", roughColor);
+    persistentMaterial.SetFloat("_Metallic", 0.0f);
+    persistentMaterial.SetFloat("_Smoothness", 0.1f); // Very rough
+    
+    // Add slight emission for gritty look
+    persistentMaterial.SetColor("_EmissionColor", baseColor * 0.1f);
+    persistentMaterial.EnableKeyword("_EMISSION");
+}
+
+private void ApplyMetallicMaterial(Color baseColor)
+{
+    // Metallic = Shiny, reflective, bright
+    Color metallicColor = Color.Lerp(baseColor, Color.white, 0.3f); // Brighten
+    persistentMaterial.SetColor("_BaseColor", metallicColor);
+    persistentMaterial.SetFloat("_Metallic", 1.0f); // Full metallic
+    persistentMaterial.SetFloat("_Smoothness", 0.8f); // Very shiny
+    
+    // Bright emission for metallic shine
+    persistentMaterial.SetColor("_EmissionColor", baseColor * 0.2f);
+    persistentMaterial.EnableKeyword("_EMISSION");
+}
+
+private void ApplyGlassMaterial(Color baseColor)
+{
+    // Glass = Transparent, bright, crystal-like
+    Color glassColor = new Color(baseColor.r, baseColor.g, baseColor.b, 0.7f); // Semi-transparent
+    persistentMaterial.SetColor("_BaseColor", glassColor);
+    persistentMaterial.SetFloat("_Metallic", 0.1f);
+    persistentMaterial.SetFloat("_Smoothness", 1.0f); // Perfect smoothness
+    
+    // Set up transparency
+    persistentMaterial.SetFloat("_Surface", 1); // Transparent surface
+    persistentMaterial.SetFloat("_Blend", 0); // Alpha blend
+    
+    // Bright emission for glass clarity
+    persistentMaterial.SetColor("_EmissionColor", baseColor * 0.3f);
+    persistentMaterial.EnableKeyword("_EMISSION");
+    
+    // Update render queue for transparency
+    persistentMaterial.renderQueue = 3000;
+}
+
+private void ApplyWoodMaterial(Color baseColor)
+{
+    // Wood = Warm, organic, slightly rough
+    Color woodColor = Color.Lerp(baseColor, new Color(0.6f, 0.4f, 0.2f, 1f), 0.3f); // Warm tint
+    persistentMaterial.SetColor("_BaseColor", woodColor);
+    persistentMaterial.SetFloat("_Metallic", 0.0f);
+    persistentMaterial.SetFloat("_Smoothness", 0.4f); // Moderate smoothness
+    
+    // Warm, subtle emission
+    persistentMaterial.SetColor("_EmissionColor", woodColor * 0.1f);
+    persistentMaterial.EnableKeyword("_EMISSION");
+}
+
+private void ApplyFabricMaterial(Color baseColor)
+{
+    // Fabric = Soft, muted, matte
+    Color fabricColor = baseColor * 0.7f; // Mute the color
+    persistentMaterial.SetColor("_BaseColor", fabricColor);
+    persistentMaterial.SetFloat("_Metallic", 0.0f);
+    persistentMaterial.SetFloat("_Smoothness", 0.2f); // Low smoothness
+    
+    // Very subtle emission for soft glow
+    persistentMaterial.SetColor("_EmissionColor", fabricColor * 0.05f);
+    persistentMaterial.EnableKeyword("_EMISSION");
+}
 }

@@ -109,63 +109,113 @@ private void WireUpPanelEvents()
         WireDropdowns(dropdowns);
         WireAdvancedToggles(toggles);
     }
-    private void WireColorToggles(Toggle[] toggles)
+private void WireColorToggles(Toggle[] toggles)
+{
+    foreach (Toggle toggle in toggles)
     {
-        foreach (Toggle toggle in toggles)
-        {
-            string toggleName = toggle.gameObject.name.ToLower();
-            Debug.Log($"Wiring color toggle: {toggle.gameObject.name}");
+        string toggleName = toggle.gameObject.name.ToLower();
+        Debug.Log($"Wiring color toggle: {toggle.gameObject.name}");
         
-            if (toggleName.Contains("red"))
-            {
-                toggle.onValueChanged.RemoveAllListeners();
-                toggle.onValueChanged.AddListener((bool isOn) => { 
-                    Debug.Log($"Red toggle event - isOn: {isOn}, currentShape: {(currentShape != null ? currentShape.gameObject.name : "NULL")}");
-                    if (isOn) SetColorRed(); 
-                });
-            }
-            else if (toggleName.Contains("blue"))
-            {
-                toggle.onValueChanged.RemoveAllListeners();
-                toggle.onValueChanged.AddListener((bool isOn) => { 
-                    Debug.Log($"Blue toggle event - isOn: {isOn}, currentShape: {(currentShape != null ? currentShape.gameObject.name : "NULL")}");
-                    if (isOn) SetColorBlue(); 
-                });
-            }
-            else if (toggleName.Contains("green"))
-            {
-                toggle.onValueChanged.RemoveAllListeners();
-                toggle.onValueChanged.AddListener((bool isOn) => { 
-                    Debug.Log($"Green toggle event - isOn: {isOn}, currentShape: {(currentShape != null ? currentShape.gameObject.name : "NULL")}");
-                    if (isOn) SetColorGreen(); 
-                });
-            }
-            else if (toggleName.Contains("yellow"))
-            {
-                toggle.onValueChanged.RemoveAllListeners();
-                toggle.onValueChanged.AddListener((bool isOn) => { 
-                    Debug.Log($"Yellow toggle event - isOn: {isOn}, currentShape: {(currentShape != null ? currentShape.gameObject.name : "NULL")}");
-                    if (isOn) SetColorYellow(); 
-                });
-            }
-            else if (toggleName.Contains("orange"))
-            {
-                toggle.onValueChanged.RemoveAllListeners();
-                toggle.onValueChanged.AddListener((bool isOn) => { 
-                    Debug.Log($"Orange toggle event - isOn: {isOn}");
-                    if (isOn) SetColorOrange(); 
-                });
-            }
-            else if (toggleName.Contains("purple"))
-            {
-                toggle.onValueChanged.RemoveAllListeners();
-                toggle.onValueChanged.AddListener((bool isOn) => { 
-                    Debug.Log($"Purple toggle event - isOn: {isOn}");
-                    if (isOn) SetColorPurple(); 
-                });
-            }
+        // Existing toggles
+        if (toggleName.Contains("red"))
+        {
+            toggle.onValueChanged.RemoveAllListeners();
+            toggle.onValueChanged.AddListener((bool isOn) => { 
+                Debug.Log($"Red toggle event - isOn: {isOn}");
+                if (isOn) SetColorRed(); 
+            });
+        }
+        else if (toggleName.Contains("blue"))
+        {
+            toggle.onValueChanged.RemoveAllListeners();
+            toggle.onValueChanged.AddListener((bool isOn) => { 
+                Debug.Log($"Blue toggle event - isOn: {isOn}");
+                if (isOn) SetColorBlue(); 
+            });
+        }
+        else if (toggleName.Contains("green"))
+        {
+            toggle.onValueChanged.RemoveAllListeners();
+            toggle.onValueChanged.AddListener((bool isOn) => { 
+                Debug.Log($"Green toggle event - isOn: {isOn}");
+                if (isOn) SetColorGreen(); 
+            });
+        }
+        else if (toggleName.Contains("yellow"))
+        {
+            toggle.onValueChanged.RemoveAllListeners();
+            toggle.onValueChanged.AddListener((bool isOn) => { 
+                Debug.Log($"Yellow toggle event - isOn: {isOn}");
+                if (isOn) SetColorYellow(); 
+            });
+        }
+        // NEW TOGGLES
+        else if (toggleName.Contains("orange"))
+        {
+            toggle.onValueChanged.RemoveAllListeners();
+            toggle.onValueChanged.AddListener((bool isOn) => { 
+                Debug.Log($"Orange toggle event - isOn: {isOn}");
+                if (isOn) SetColorOrange(); 
+            });
+        }
+        else if (toggleName.Contains("purple"))
+        {
+            toggle.onValueChanged.RemoveAllListeners();
+            toggle.onValueChanged.AddListener((bool isOn) => { 
+                Debug.Log($"Purple toggle event - isOn: {isOn}");
+                if (isOn) SetColorPurple(); 
+            });
+        }
+        else if (toggleName.Contains("brown"))
+        {
+            toggle.onValueChanged.RemoveAllListeners();
+            toggle.onValueChanged.AddListener((bool isOn) => { 
+                Debug.Log($"Brown toggle event - isOn: {isOn}");
+                if (isOn) SetColorBrown(); 
+            });
+        }
+        else if (toggleName.Contains("pink"))
+        {
+            toggle.onValueChanged.RemoveAllListeners();
+            toggle.onValueChanged.AddListener((bool isOn) => { 
+                Debug.Log($"Pink toggle event - isOn: {isOn}");
+                if (isOn) SetColorPink(); 
+            });
+        }
+        else if (toggleName.Contains("black"))
+        {
+            toggle.onValueChanged.RemoveAllListeners();
+            toggle.onValueChanged.AddListener((bool isOn) => { 
+                Debug.Log($"Black toggle event - isOn: {isOn}");
+                if (isOn) SetColorBlack(); 
+            });
+        }
+        else if (toggleName.Contains("white"))
+        {
+            toggle.onValueChanged.RemoveAllListeners();
+            toggle.onValueChanged.AddListener((bool isOn) => { 
+                Debug.Log($"White toggle event - isOn: {isOn}");
+                if (isOn) SetColorWhite(); 
+            });
+        }
+        else if (toggleName.Contains("gray") || toggleName.Contains("grey"))
+        {
+            toggle.onValueChanged.RemoveAllListeners();
+            toggle.onValueChanged.AddListener((bool isOn) => { 
+                Debug.Log($"Gray toggle event - isOn: {isOn}");
+                if (isOn) SetColorGray(); 
+            });
+        }
+        else if (toggleName.Contains("teal"))
+        {
+            toggle.onValueChanged.RemoveAllListeners();
+            toggle.onValueChanged.AddListener((bool isOn) => { 
+                Debug.Log($"Teal toggle event - isOn: {isOn}");
+                if (isOn) SetColorTeal(); 
+            });
         }
     }
+}
     private void WireCloseButton(Button[] buttons)
     {
         foreach (Button button in buttons)
@@ -543,36 +593,49 @@ private void WireAdvancedSliders(Slider[] sliders)
         // ADD THIS LINE AT THE END:
         UpdateSliderValueDisplays();
     }
-    private void SetCurrentColorToggle()
+private void SetCurrentColorToggle()
+{
+    if (currentPanelInstance == null || currentShape == null) return;
+    
+    Toggle[] toggles = currentPanelInstance.GetComponentsInChildren<Toggle>();
+    SelectableShape.EmotionalColor currentEmotionalColor = currentShape.advancedData.emotionalColor;
+    
+    foreach (Toggle toggle in toggles)
     {
-        if (currentPanelInstance == null || currentShape == null) return;
+        string toggleName = toggle.gameObject.name.ToLower();
+        bool shouldBeOn = false;
         
-        Toggle[] toggles = currentPanelInstance.GetComponentsInChildren<Toggle>();
-        SelectableShape.EmotionalColor currentEmotionalColor = currentShape.advancedData.emotionalColor;
+        // Existing colors
+        if (toggleName.Contains("red") && currentEmotionalColor == SelectableShape.EmotionalColor.Red)
+            shouldBeOn = true;
+        else if (toggleName.Contains("blue") && currentEmotionalColor == SelectableShape.EmotionalColor.Blue)
+            shouldBeOn = true;
+        else if (toggleName.Contains("green") && currentEmotionalColor == SelectableShape.EmotionalColor.Green)
+            shouldBeOn = true;
+        else if (toggleName.Contains("yellow") && currentEmotionalColor == SelectableShape.EmotionalColor.Yellow)
+            shouldBeOn = true;
+        else if (toggleName.Contains("orange") && currentEmotionalColor == SelectableShape.EmotionalColor.Orange)
+            shouldBeOn = true;
+        else if (toggleName.Contains("purple") && currentEmotionalColor == SelectableShape.EmotionalColor.Purple)
+            shouldBeOn = true;
+        else if (toggleName.Contains("brown") && currentEmotionalColor == SelectableShape.EmotionalColor.Brown)
+            shouldBeOn = true;
+        else if (toggleName.Contains("pink") && currentEmotionalColor == SelectableShape.EmotionalColor.Pink)
+            shouldBeOn = true;
+        else if (toggleName.Contains("black") && currentEmotionalColor == SelectableShape.EmotionalColor.Black)
+            shouldBeOn = true;
+        else if (toggleName.Contains("white") && currentEmotionalColor == SelectableShape.EmotionalColor.White)
+            shouldBeOn = true;
+        else if ((toggleName.Contains("gray") || toggleName.Contains("grey")) && currentEmotionalColor == SelectableShape.EmotionalColor.Gray)
+            shouldBeOn = true;
+        else if (toggleName.Contains("teal") && currentEmotionalColor == SelectableShape.EmotionalColor.Teal)
+            shouldBeOn = true;
         
-        foreach (Toggle toggle in toggles)
-        {
-            string toggleName = toggle.gameObject.name.ToLower();
-            bool shouldBeOn = false;
-            
-            if (toggleName.Contains("red") && currentEmotionalColor == SelectableShape.EmotionalColor.Red)
-                shouldBeOn = true;
-            else if (toggleName.Contains("blue") && currentEmotionalColor == SelectableShape.EmotionalColor.Blue)
-                shouldBeOn = true;
-            else if (toggleName.Contains("green") && currentEmotionalColor == SelectableShape.EmotionalColor.Green)
-                shouldBeOn = true;
-            else if (toggleName.Contains("yellow") && currentEmotionalColor == SelectableShape.EmotionalColor.Yellow)
-                shouldBeOn = true;
-            else if (toggleName.Contains("orange") && currentEmotionalColor == SelectableShape.EmotionalColor.Orange)
-                shouldBeOn = true;
-            else if (toggleName.Contains("purple") && currentEmotionalColor == SelectableShape.EmotionalColor.Purple)
-                shouldBeOn = true;
-            
-            toggle.SetIsOnWithoutNotify(shouldBeOn);
-        }
-        
-        Debug.Log($"Updated toggles to match current emotional color: {currentEmotionalColor}");
+        toggle.SetIsOnWithoutNotify(shouldBeOn);
     }
+    
+    Debug.Log($"Updated toggles to match current emotional color: {currentEmotionalColor}");
+}
     private bool IsColorMatch(Color a, Color b)
     {
         float tolerance = 0.1f;
@@ -612,7 +675,42 @@ private void WireAdvancedSliders(Slider[] sliders)
     { 
         ChangeShapeEmotionalColor(SelectableShape.EmotionalColor.Purple);
     }
-    
+
+    public void SetColorBrown() 
+    { 
+        Debug.Log("SetColorBrown called!"); 
+        ChangeShapeEmotionalColor(SelectableShape.EmotionalColor.Brown);
+    }
+
+    public void SetColorPink() 
+    { 
+        Debug.Log("SetColorPink called!"); 
+        ChangeShapeEmotionalColor(SelectableShape.EmotionalColor.Pink);
+    }
+
+    public void SetColorBlack() 
+    { 
+        Debug.Log("SetColorBlack called!"); 
+        ChangeShapeEmotionalColor(SelectableShape.EmotionalColor.Black);
+    }
+
+    public void SetColorWhite() 
+    { 
+        Debug.Log("SetColorWhite called!"); 
+        ChangeShapeEmotionalColor(SelectableShape.EmotionalColor.White);
+    }
+
+    public void SetColorGray() 
+    { 
+        Debug.Log("SetColorGray called!"); 
+        ChangeShapeEmotionalColor(SelectableShape.EmotionalColor.Gray);
+    }
+
+    public void SetColorTeal() 
+    { 
+        Debug.Log("SetColorTeal called!"); 
+        ChangeShapeEmotionalColor(SelectableShape.EmotionalColor.Teal);
+    }
     private void ChangeShapeEmotionalColor(SelectableShape.EmotionalColor newEmotionalColor)
     {
         Debug.Log($"=== ChangeShapeEmotionalColor START ===");
