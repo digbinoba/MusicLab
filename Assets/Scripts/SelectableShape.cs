@@ -14,6 +14,9 @@ public class SelectableShape : MonoBehaviour
     [Header("Advanced Properties")]
     public AdvancedShapeData advancedData;
     
+    [Header("Animation")]
+    [SerializeField] private ShapeAnimator shapeAnimator;
+    
     private Material originalMaterial;
     private Vector3 originalScale;
     private Material persistentMaterial;
@@ -48,7 +51,8 @@ public class SelectableShape : MonoBehaviour
     void Start()
     {
         Debug.Log($"=== START: {gameObject.name} ===");
-    
+        Debug.Log($"Starting position: {transform.position}");
+        
         // Get original renderer and material
         Renderer renderer = GetComponent<Renderer>();
         originalMaterial = renderer.material;
@@ -79,9 +83,35 @@ public class SelectableShape : MonoBehaviour
         SetShapeDefaults();
         ApplyEmotionalColorToRenderer();
     
+        // Get the animator component
+        if (shapeAnimator == null)
+            shapeAnimator = GetComponent<ShapeAnimator>();
+    
+
+        if (shapeAnimator != null)
+        {
+            // Initialize with current position (spawn position)
+            shapeAnimator.Initialize();
+            shapeAnimator.SetAnimationType(advancedData.animationType);
+        }
+        
         Debug.Log($"=== END START: {gameObject.name} ===");
     
         gameObject.tag = "SpawnedShape";
+    }
+    
+    public void UpdateAnimationType(AnimationType animType)
+    {
+        Debug.Log($"UpdateAnimationType called: OLD={advancedData.animationType}, NEW={animType}");
+        advancedData.animationType = animType;
+    
+        // Update the visual animation
+        if (shapeAnimator != null)
+        {
+            shapeAnimator.SetAnimationType(animType);
+        }
+    
+        Debug.Log($"Updated {gameObject.name} animation to: {advancedData.animationType}");
     }
     private void SetupURPMaterialProperties()
     {
@@ -184,12 +214,18 @@ public class SelectableShape : MonoBehaviour
         Vector3 newScale = originalScale * _shapeSize;
         transform.localScale = newScale;
         
+        // Update animator's original scale so pulse animation works correctly
+        if (shapeAnimator != null)
+        {
+            shapeAnimator.UpdateOriginalScale();
+        }
+    
         // Update outline if it exists
         if (outlineInstance != null)
         {
             outlineInstance.transform.localScale = newScale * 1.08f;
         }
-        
+    
         Debug.Log($"Applied scale {newScale} (multiplier: {_shapeSize}) to {gameObject.name}");
     }
     
@@ -602,14 +638,7 @@ public class SelectableShape : MonoBehaviour
         advancedData.musicalRole = role;
         Debug.Log($"Updated {gameObject.name} musical role to: {advancedData.musicalRole}");
     }
-
-    public void UpdateAnimationType(AnimationType animType)
-    {
-        Debug.Log($"UpdateAnimationType called: OLD={advancedData.animationType}, NEW={animType}");
-        advancedData.animationType = animType;
-        Debug.Log($"Updated {gameObject.name} animation to: {advancedData.animationType}");
-    }
-
+    
     public void UpdateMaterialType(MaterialType materialType)
     {
         Debug.Log($"UpdateMaterialType called: OLD={advancedData.materialType}, NEW={materialType}");
