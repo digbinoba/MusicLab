@@ -8,7 +8,6 @@ public class SelectableShape : MonoBehaviour
     private bool isSelected = false;
     
     [Header("Persistent Shape Properties")]
-    [SerializeField] private Color _shapeColor = Color.white;
     [SerializeField] private float _shapeSize = 1f; // Size multiplier
     [SerializeField] private string _shapeType = "Sphere";
     
@@ -19,15 +18,16 @@ public class SelectableShape : MonoBehaviour
     private Vector3 originalScale;
     private Material persistentMaterial;
     // Public properties with persistence
-    public Color shapeColor 
+    public EmotionalColor emotionalColor 
     { 
-        get => _shapeColor; 
+        get => advancedData.emotionalColor; 
         set 
         { 
-            _shapeColor = value;
-            ApplyColorToRenderer();
+            advancedData.emotionalColor = value;
+            ApplyEmotionalColorToRenderer();
         }
     }
+    public Color shapeColor => EmotionalColorUtility.GetEmotionalColor(advancedData.emotionalColor);
     
     public float shapeSize 
     { 
@@ -47,52 +47,86 @@ public class SelectableShape : MonoBehaviour
     
     void Start()
     {
-        // Create our own material instance so changes persist
+        Debug.Log($"=== START: {gameObject.name} ===");
+    
+        // Get original renderer and material
         Renderer renderer = GetComponent<Renderer>();
         originalMaterial = renderer.material;
     
-        Debug.Log($"Original material: {originalMaterial.name}, shader: {originalMaterial.shader.name}");
+        // Create NEW URP material with proper settings
+        persistentMaterial = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+        persistentMaterial.name = gameObject.name + "_EmotionalMaterial";
     
-        persistentMaterial = new Material(originalMaterial);
-        persistentMaterial.name = originalMaterial.name + "_Persistent";
+        // IMPORTANT: Set up proper rendering properties
+        SetupURPMaterialProperties();
+    
         renderer.material = persistentMaterial;
     
-        Debug.Log($"Created persistent material: {persistentMaterial.name}");
+        Debug.Log($"Created new URP material: {persistentMaterial.name}");
+        Debug.Log($"Material shader: {persistentMaterial.shader.name}");
     
         // Store the original scale
         originalScale = transform.localScale;
     
-        // Initialize properties
-        _shapeColor = persistentMaterial.color;
-        _shapeSize = 1f;
-        _shapeType = DetermineShapeType();
-    
         // Initialize advanced data
         advancedData = new AdvancedShapeData();
         advancedData.position = transform.position;
-        advancedData.color = shapeColor;
         advancedData.size = shapeSize;
         advancedData.shapeType = DetermineShapeType();
         advancedData.spawnTime = Time.time;
-        
-        // IMPORTANT: Initialize enum defaults explicitly
-        advancedData.musicalRole = ShapeRole.Harmony;
-        advancedData.animationType = AnimationType.None;
-        advancedData.materialType = MaterialType.Smooth;
-        advancedData.intensity = 0.5f;
-        advancedData.energy = 0.5f;
-        advancedData.roughness = 0f;
-        advancedData.duration = 4f;
-        advancedData.isLooping = true;
-        
-        // Apply smart defaults based on shape type
+    
+        // Set defaults and apply color
         SetShapeDefaults();
+        ApplyEmotionalColorToRenderer();
     
-        Debug.Log($"Initialized {advancedData.shapeType} with Role: {advancedData.musicalRole}, Material: {advancedData.materialType}");
+        Debug.Log($"=== END START: {gameObject.name} ===");
     
-        gameObject.tag = "SpawnedShape";    
-        Debug.Log($"Shape initialized: {gameObject.name}, Initial Color: {_shapeColor}");
+        gameObject.tag = "SpawnedShape";
     }
+    private void SetupURPMaterialProperties()
+    {
+        // Essential URP material properties for visibility
+    
+        // Surface Type: Opaque (not transparent)
+        persistentMaterial.SetFloat("_Surface", 0); // 0 = Opaque, 1 = Transparent
+    
+        // Blend Mode: Alpha (for opaque)
+        persistentMaterial.SetFloat("_Blend", 0); // 0 = Alpha, 1 = Premultiply, etc.
+    
+        // Alpha Clipping: Off
+        persistentMaterial.SetFloat("_AlphaClip", 0);
+    
+        // Cull Mode: Back (normal)
+        persistentMaterial.SetFloat("_Cull", 2); // 0 = Off, 1 = Front, 2 = Back
+    
+        // Z Write: On (writes to depth buffer)
+        persistentMaterial.SetFloat("_ZWrite", 1);
+    
+        // Z Test: LessEqual (normal depth testing)
+        persistentMaterial.SetFloat("_ZTest", 4);
+    
+        // Render Queue: Geometry (normal opaque objects)
+        persistentMaterial.renderQueue = 2000;
+    
+        // Basic material properties
+        persistentMaterial.SetFloat("_Smoothness", 0.5f);
+        persistentMaterial.SetFloat("_Metallic", 0.0f);
+        persistentMaterial.SetFloat("_SpecularHighlights", 1.0f);
+        persistentMaterial.SetFloat("_EnvironmentReflections", 1.0f);
+    
+        // Default white base color (will be changed by emotional color)
+        persistentMaterial.SetColor("_BaseColor", Color.white);
+    
+        // Enable/disable keywords for proper rendering
+        persistentMaterial.DisableKeyword("_ALPHATEST_ON");
+        persistentMaterial.DisableKeyword("_ALPHABLEND_ON");
+        persistentMaterial.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+        persistentMaterial.EnableKeyword("_SPECULARHIGHLIGHTS_OFF");
+        persistentMaterial.EnableKeyword("_ENVIRONMENTREFLECTIONS_OFF");
+    
+        Debug.Log("URP Material properties configured for visibility");
+    }
+    
     void Update()
     {
         // Continuously ensure our properties are applied
@@ -101,13 +135,17 @@ public class SelectableShape : MonoBehaviour
     }
     private void EnsurePropertiesApplied()
     {
-        // Check if color was reset
-        if (persistentMaterial.color != _shapeColor)
+        // Only check if emotional color needs reapplying
+        Color expectedColor = EmotionalColorUtility.GetEmotionalColor(advancedData.emotionalColor);
+        Color currentColor = persistentMaterial.GetColor("_BaseColor");
+    
+        if (Vector3.Distance(new Vector3(currentColor.r, currentColor.g, currentColor.b),
+                new Vector3(expectedColor.r, expectedColor.g, expectedColor.b)) > 0.01f)
         {
-            Debug.Log($"Color was reset! Reapplying {_shapeColor}");
-            ApplyColorToRenderer();
+            Debug.Log($"Emotional color was reset! Reapplying {advancedData.emotionalColor} ({expectedColor})");
+            ApplyEmotionalColorToRenderer();
         }
-        
+    
         // Check if scale was reset
         Vector3 expectedScale = originalScale * _shapeSize;
         if (Vector3.Distance(transform.localScale, expectedScale) > 0.01f)
@@ -116,30 +154,30 @@ public class SelectableShape : MonoBehaviour
             ApplyScaleToTransform();
         }
     }
-    private void ApplyColorToRenderer()
-    {
-        if (persistentMaterial != null)
-        {
-            Debug.Log($"ApplyColorToRenderer: Setting color {_shapeColor} on {gameObject.name}");
-        
-            // Set the color using multiple methods to ensure it works
-            persistentMaterial.color = _shapeColor;
-        
-            if (persistentMaterial.HasProperty("_BaseColor"))
-            {
-                persistentMaterial.SetColor("_BaseColor", _shapeColor);
-            }
-        
-            // Force the renderer to use the updated material
-            Renderer renderer = GetComponent<Renderer>();
-            renderer.material = persistentMaterial;
-        
-            // Additional force update
-            renderer.material.color = _shapeColor;
-        
-            Debug.Log($"Applied color {_shapeColor}, renderer shows: {renderer.material.color}");
-        }
-    }
+    // private void ApplyColorToRenderer()
+    // {
+    //     if (persistentMaterial != null)
+    //     {
+    //         Debug.Log($"ApplyColorToRenderer: Setting color {_shapeColor} on {gameObject.name}");
+    //     
+    //         // Set the color using multiple methods to ensure it works
+    //         persistentMaterial.color = _shapeColor;
+    //     
+    //         if (persistentMaterial.HasProperty("_BaseColor"))
+    //         {
+    //             persistentMaterial.SetColor("_BaseColor", _shapeColor);
+    //         }
+    //     
+    //         // Force the renderer to use the updated material
+    //         Renderer renderer = GetComponent<Renderer>();
+    //         renderer.material = persistentMaterial;
+    //     
+    //         // Additional force update
+    //         renderer.material.color = _shapeColor;
+    //     
+    //         Debug.Log($"Applied color {_shapeColor}, renderer shows: {renderer.material.color}");
+    //     }
+    // }
     
     private void ApplyScaleToTransform()
     {
@@ -183,6 +221,7 @@ public class SelectableShape : MonoBehaviour
         switch (shapeType)
         {
             case "Sphere":
+                advancedData.emotionalColor = EmotionalColor.Green;
                 advancedData.musicalRole = ShapeRole.Harmony;
                 advancedData.materialType = MaterialType.Smooth;
                 advancedData.animationType = AnimationType.Float;
@@ -193,6 +232,7 @@ public class SelectableShape : MonoBehaviour
                 break;
             
             case "Cube":
+                advancedData.emotionalColor = EmotionalColor.Red;
                 advancedData.musicalRole = ShapeRole.Rhythm;
                 advancedData.materialType = MaterialType.Rough;
                 advancedData.animationType = AnimationType.Bounce;
@@ -203,6 +243,7 @@ public class SelectableShape : MonoBehaviour
                 break;
             
             case "Cylinder":
+                advancedData.emotionalColor = EmotionalColor.Purple;
                 advancedData.musicalRole = ShapeRole.Bass;
                 advancedData.materialType = MaterialType.Metallic;
                 advancedData.animationType = AnimationType.Spin;
@@ -335,10 +376,106 @@ public class SelectableShape : MonoBehaviour
     
     
     // Public methods for external updates
+    // New method for updating emotional color
+    private void ApplyEmotionalColorToRenderer()
+    {
+        Debug.Log($"=== ApplyEmotionalColorToRenderer START ===");
+    Debug.Log($"GameObject: {gameObject.name}");
+    Debug.Log($"Current emotional color: {advancedData.emotionalColor}");
+    
+    if (persistentMaterial != null)
+    {
+        Color renderColor = EmotionalColorUtility.GetEmotionalColor(advancedData.emotionalColor);
+        Debug.Log($"Target render color: {renderColor}");
+        Debug.Log($"Material shader: {persistentMaterial.shader.name}");
+        
+        // For URP, we need to set _BaseColor specifically
+        if (persistentMaterial.shader.name.Contains("Universal Render Pipeline") || 
+            persistentMaterial.shader.name.Contains("URP") ||
+            persistentMaterial.HasProperty("_BaseColor"))
+        {
+            Debug.Log("Using URP _BaseColor property");
+            persistentMaterial.SetColor("_BaseColor", renderColor);
+            
+            // Also set the main texture color if it exists
+            if (persistentMaterial.HasProperty("_BaseMap"))
+            {
+                // Keep existing texture but change color
+                persistentMaterial.SetColor("_BaseColor", renderColor);
+            }
+        }
+        else
+        {
+            Debug.Log("Using standard color property");
+            persistentMaterial.color = renderColor;
+        }
+        
+        // Double-check what we actually set
+        Debug.Log($"Material _BaseColor after setting: {persistentMaterial.GetColor("_BaseColor")}");
+        Debug.Log($"Material color after setting: {persistentMaterial.color}");
+        
+        // Force the renderer to use the updated material
+        Renderer renderer = GetComponent<Renderer>();
+        renderer.material = persistentMaterial;
+        
+        Debug.Log($"Renderer material color: {renderer.material.color}");
+        if (renderer.material.HasProperty("_BaseColor"))
+        {
+            Debug.Log($"Renderer material _BaseColor: {renderer.material.GetColor("_BaseColor")}");
+        }
+    }
+    else
+    {
+        Debug.LogError($"persistentMaterial is NULL on {gameObject.name}!");
+    }
+    
+    Debug.Log($"=== ApplyEmotionalColorToRenderer END ===");
+    }
+    
+    public void UpdateEmotionalColor(EmotionalColor newEmotionalColor)
+    {
+        Debug.Log($"=== UpdateEmotionalColor START ===");
+        Debug.Log($"GameObject: {gameObject.name}");
+        Debug.Log($"OLD emotional color: {advancedData.emotionalColor}");
+        Debug.Log($"NEW emotional color: {newEmotionalColor}");
+    
+        advancedData.emotionalColor = newEmotionalColor;
+        Debug.Log($"Advanced data updated to: {advancedData.emotionalColor}");
+    
+        ApplyEmotionalColorToRenderer();
+    
+        Debug.Log($"=== UpdateEmotionalColor END ===");
+    }
+    
+    // Keep this for backward compatibility but make it use emotional colors
     public void UpdateColor(Color newColor)
     {
-        Debug.Log($"UpdateColor called: {newColor} on {gameObject.name}");
-        shapeColor = newColor; // Uses the property setter
+        // Convert regular color to closest emotional color
+        EmotionalColor closestEmotional = FindClosestEmotionalColor(newColor);
+        UpdateEmotionalColor(closestEmotional);
+    }
+    
+    private EmotionalColor FindClosestEmotionalColor(Color targetColor)
+    {
+        EmotionalColor closest = EmotionalColor.Red;
+        float minDistance = float.MaxValue;
+        
+        foreach (EmotionalColor emotionalColor in System.Enum.GetValues(typeof(EmotionalColor)))
+        {
+            Color emotionalColorValue = EmotionalColorUtility.GetEmotionalColor(emotionalColor);
+            float distance = Vector3.Distance(
+                new Vector3(targetColor.r, targetColor.g, targetColor.b),
+                new Vector3(emotionalColorValue.r, emotionalColorValue.g, emotionalColorValue.b)
+            );
+            
+            if (distance < minDistance)
+            {
+                minDistance = distance;
+                closest = emotionalColor;
+            }
+        }
+        
+        return closest;
     }
     
     public void UpdateSize(float newSizeMultiplier)
@@ -374,7 +511,7 @@ public class SelectableShape : MonoBehaviour
     public class AdvancedShapeData
     {
         [Header("Basic Properties")]
-        public Color color;
+        public EmotionalColor emotionalColor = EmotionalColor.Red;
         public float size;
         public string shapeType;
     
@@ -411,7 +548,21 @@ public class SelectableShape : MonoBehaviour
         public List<string> connectedShapeIDs;
         [Range(0f, 1f)] public float harmony = 0.5f;
     }
-
+    public enum EmotionalColor
+    {
+        Red,        // Passion/Energy
+        Orange,     // Joy/Creativity  
+        Yellow,     // Happiness/Cheerful
+        Green,      // Calm/Natural
+        Blue,       // Sad/Melancholy
+        Purple,     // Mysterious/Spiritual
+        Brown,      // Earthy/Grounded
+        Pink,       // Romantic/Gentle
+        Black,      // Dark/Intense
+        White,      // Pure/Minimal
+        Gray,       // Neutral/Contemplative
+        Teal        // Sophisticated/Modern
+    }
     public enum AnimationType { None, Bounce, Spin, Float, Pulse }
     public enum PulseType { None, Slow, Fast, Irregular }
     public enum MaterialType { Smooth, Rough, Metallic, Glass, Wood, Fabric }

@@ -148,6 +148,22 @@ private void WireUpPanelEvents()
                     if (isOn) SetColorYellow(); 
                 });
             }
+            else if (toggleName.Contains("orange"))
+            {
+                toggle.onValueChanged.RemoveAllListeners();
+                toggle.onValueChanged.AddListener((bool isOn) => { 
+                    Debug.Log($"Orange toggle event - isOn: {isOn}");
+                    if (isOn) SetColorOrange(); 
+                });
+            }
+            else if (toggleName.Contains("purple"))
+            {
+                toggle.onValueChanged.RemoveAllListeners();
+                toggle.onValueChanged.AddListener((bool isOn) => { 
+                    Debug.Log($"Purple toggle event - isOn: {isOn}");
+                    if (isOn) SetColorPurple(); 
+                });
+            }
         }
     }
     private void WireCloseButton(Button[] buttons)
@@ -345,8 +361,12 @@ private void WireAdvancedSliders(Slider[] sliders)
     {
         if (currentPanelInstance == null || currentShape == null) return;
     
-        Debug.Log($"Updating panel UI for {currentShape.gameObject.name}: Color={currentShape.shapeColor}, Size={currentShape.shapeSize}");
-    
+        Debug.Log($"=== UpdatePanelToCurrentShape START ===");
+        Debug.Log($"Current shape: {currentShape.gameObject.name}");
+        Debug.Log($"Current emotional color: {currentShape.advancedData.emotionalColor}");
+        Debug.Log($"Current size: {currentShape.shapeSize}");
+        Debug.Log($"Current intensity: {currentShape.advancedData.intensity}");
+        
         // UPDATE SHAPE INFO DISPLAY
         UpdateShapeInfoDisplay();
         
@@ -403,10 +423,10 @@ private void WireAdvancedSliders(Slider[] sliders)
                 dropdown.SetValueWithoutNotify(materialValue);
             }
         }
+        Debug.Log($"=== UpdatePanelToCurrentShape END ===");
     }
     private void UpdateShapeInfoDisplay()
     {
-        // Update shape title and info
         TMPro.TextMeshProUGUI[] texts = currentPanelInstance.GetComponentsInChildren<TMPro.TextMeshProUGUI>();
         
         foreach (TMPro.TextMeshProUGUI text in texts)
@@ -425,9 +445,12 @@ private void WireAdvancedSliders(Slider[] sliders)
             {
                 text.text = $"Role: {currentShape.advancedData.musicalRole}";
             }
+            // ADD EMOTIONAL COLOR DISPLAY
+            else if (textName.Contains("shapecolor") || textName.Contains("mood"))
+            {
+                text.text = $"Mood: {EmotionalColorUtility.GetEmotionalDescription(currentShape.advancedData.emotionalColor)}";
+            }
         }
-        
-        Debug.Log($"Updated shape info: {currentShape.advancedData.shapeType} - {currentShape.advancedData.musicalRole}");
     }
     private void UpdateSliderValueDisplays()
     {
@@ -523,28 +546,32 @@ private void WireAdvancedSliders(Slider[] sliders)
     private void SetCurrentColorToggle()
     {
         if (currentPanelInstance == null || currentShape == null) return;
-    
+        
         Toggle[] toggles = currentPanelInstance.GetComponentsInChildren<Toggle>();
-        Color currentColor = currentShape.shapeColor;
-    
+        SelectableShape.EmotionalColor currentEmotionalColor = currentShape.advancedData.emotionalColor;
+        
         foreach (Toggle toggle in toggles)
         {
             string toggleName = toggle.gameObject.name.ToLower();
             bool shouldBeOn = false;
-        
-            if (toggleName.Contains("red") && IsColorMatch(currentColor, Color.red))
+            
+            if (toggleName.Contains("red") && currentEmotionalColor == SelectableShape.EmotionalColor.Red)
                 shouldBeOn = true;
-            else if (toggleName.Contains("blue") && IsColorMatch(currentColor, Color.blue))
+            else if (toggleName.Contains("blue") && currentEmotionalColor == SelectableShape.EmotionalColor.Blue)
                 shouldBeOn = true;
-            else if (toggleName.Contains("green") && IsColorMatch(currentColor, Color.green))
+            else if (toggleName.Contains("green") && currentEmotionalColor == SelectableShape.EmotionalColor.Green)
                 shouldBeOn = true;
-            else if (toggleName.Contains("yellow") && IsColorMatch(currentColor, Color.yellow))
+            else if (toggleName.Contains("yellow") && currentEmotionalColor == SelectableShape.EmotionalColor.Yellow)
                 shouldBeOn = true;
-        
+            else if (toggleName.Contains("orange") && currentEmotionalColor == SelectableShape.EmotionalColor.Orange)
+                shouldBeOn = true;
+            else if (toggleName.Contains("purple") && currentEmotionalColor == SelectableShape.EmotionalColor.Purple)
+                shouldBeOn = true;
+            
             toggle.SetIsOnWithoutNotify(shouldBeOn);
         }
-    
-        Debug.Log($"Updated toggles to match current color: {currentColor}");
+        
+        Debug.Log($"Updated toggles to match current emotional color: {currentEmotionalColor}");
     }
     private bool IsColorMatch(Color a, Color b)
     {
@@ -553,55 +580,57 @@ private void WireAdvancedSliders(Slider[] sliders)
     }
     public void SetColorRed() 
     { 
-        Debug.Log($"SetColorRed called! currentShape: {(currentShape != null ? currentShape.gameObject.name : "NULL")}"); 
-        if (currentShape != null)
-        {
-            ChangeShapeColor(Color.red);
-        }
-        else
-        {
-            Debug.LogError("currentShape is NULL in SetColorRed!");
-        }
+        Debug.Log("SetColorRed called!"); 
+        ChangeShapeEmotionalColor(SelectableShape.EmotionalColor.Red);
     }
     
-    // Add similar debug to other color methods...
     public void SetColorBlue() 
     { 
-        Debug.Log($"SetColorBlue called! currentShape: {(currentShape != null ? currentShape.gameObject.name : "NULL")}"); 
-        if (currentShape != null)
-        {
-            ChangeShapeColor(Color.blue);
-        }
-        else
-        {
-            Debug.LogError("currentShape is NULL in SetColorBlue!");
-        }
+        Debug.Log("SetColorBlue called!"); 
+        ChangeShapeEmotionalColor(SelectableShape.EmotionalColor.Blue);
     }
     
     public void SetColorGreen() 
     { 
-        Debug.Log($"SetColorGreen called! currentShape: {(currentShape != null ? currentShape.gameObject.name : "NULL")}"); 
-        if (currentShape != null)
-        {
-            ChangeShapeColor(Color.green);
-        }
-        else
-        {
-            Debug.LogError("currentShape is NULL in SetColorGreen!");
-        }
+        Debug.Log("SetColorGreen called!"); 
+        ChangeShapeEmotionalColor(SelectableShape.EmotionalColor.Green);
     }
     
     public void SetColorYellow() 
     { 
-        Debug.Log($"SetColorYellow called! currentShape: {(currentShape != null ? currentShape.gameObject.name : "NULL")}"); 
+        Debug.Log("SetColorYellow called!"); 
+        ChangeShapeEmotionalColor(SelectableShape.EmotionalColor.Yellow);
+    }
+    
+    // Add new emotional color methods
+    public void SetColorOrange() 
+    { 
+        ChangeShapeEmotionalColor(SelectableShape.EmotionalColor.Orange);
+    }
+    
+    public void SetColorPurple() 
+    { 
+        ChangeShapeEmotionalColor(SelectableShape.EmotionalColor.Purple);
+    }
+    
+    private void ChangeShapeEmotionalColor(SelectableShape.EmotionalColor newEmotionalColor)
+    {
+        Debug.Log($"=== ChangeShapeEmotionalColor START ===");
+        Debug.Log($"Requested emotional color: {newEmotionalColor}");
+        Debug.Log($"Current shape: {(currentShape != null ? currentShape.gameObject.name : "NULL")}");
+    
         if (currentShape != null)
         {
-            ChangeShapeColor(Color.yellow);
+            Debug.Log($"Before change: {currentShape.advancedData.emotionalColor}");
+            currentShape.UpdateEmotionalColor(newEmotionalColor);
+            Debug.Log($"After change: {currentShape.advancedData.emotionalColor}");
         }
         else
         {
-            Debug.LogError("currentShape is NULL in SetColorYellow!");
+            Debug.LogError("currentShape is NULL in ChangeShapeEmotionalColor!");
         }
+    
+        Debug.Log($"=== ChangeShapeEmotionalColor END ===");
     }
     
     private Vector3 CalculateVRPanelPosition(Vector3 shapePosition)
