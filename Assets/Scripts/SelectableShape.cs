@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 public class SelectableShape : MonoBehaviour 
@@ -10,6 +11,9 @@ public class SelectableShape : MonoBehaviour
     [SerializeField] private Color _shapeColor = Color.white;
     [SerializeField] private float _shapeSize = 1f; // Size multiplier
     [SerializeField] private string _shapeType = "Sphere";
+    
+    [Header("Advanced Properties")]
+    public AdvancedShapeData advancedData;
     
     private Material originalMaterial;
     private Vector3 originalScale;
@@ -63,8 +67,30 @@ public class SelectableShape : MonoBehaviour
         _shapeSize = 1f;
         _shapeType = DetermineShapeType();
     
-        gameObject.tag = "SpawnedShape";
+        // Initialize advanced data
+        advancedData = new AdvancedShapeData();
+        advancedData.position = transform.position;
+        advancedData.color = shapeColor;
+        advancedData.size = shapeSize;
+        advancedData.shapeType = DetermineShapeType();
+        advancedData.spawnTime = Time.time;
+        
+        // IMPORTANT: Initialize enum defaults explicitly
+        advancedData.musicalRole = ShapeRole.Harmony;
+        advancedData.animationType = AnimationType.None;
+        advancedData.materialType = MaterialType.Smooth;
+        advancedData.intensity = 0.5f;
+        advancedData.energy = 0.5f;
+        advancedData.roughness = 0f;
+        advancedData.duration = 4f;
+        advancedData.isLooping = true;
+        
+        // Apply smart defaults based on shape type
+        SetShapeDefaults();
     
+        Debug.Log($"Initialized {advancedData.shapeType} with Role: {advancedData.musicalRole}, Material: {advancedData.materialType}");
+    
+        gameObject.tag = "SpawnedShape";    
         Debug.Log($"Shape initialized: {gameObject.name}, Initial Color: {_shapeColor}");
     }
     void Update()
@@ -135,6 +161,8 @@ public class SelectableShape : MonoBehaviour
             return "Sphere";
         else if (gameObject.name.ToLower().Contains("cube"))
             return "Cube";
+        else if (name.Contains("cylinder"))
+            return "Cylinder";
         else
             return "Unknown";
     }
@@ -147,6 +175,49 @@ public class SelectableShape : MonoBehaviour
         if (!isSelected && !IsPanelOpen())
         {
             ShowOutline();
+        }
+    }
+    private void SetShapeDefaults()
+    {
+        // Set intelligent defaults based on shape type
+        switch (shapeType)
+        {
+            case "Sphere":
+                advancedData.musicalRole = ShapeRole.Harmony;
+                advancedData.materialType = MaterialType.Smooth;
+                advancedData.animationType = AnimationType.Float;
+                advancedData.intensity = 0.5f;
+                advancedData.energy = 0.6f;
+                advancedData.duration = 4f;
+                Debug.Log("Applied Sphere defaults: Harmony role, Smooth material");
+                break;
+            
+            case "Cube":
+                advancedData.musicalRole = ShapeRole.Rhythm;
+                advancedData.materialType = MaterialType.Rough;
+                advancedData.animationType = AnimationType.Bounce;
+                advancedData.intensity = 0.7f;
+                advancedData.energy = 0.8f;
+                advancedData.duration = 2f; // Shorter for rhythmic elements
+                Debug.Log("Applied Cube defaults: Rhythm role, Rough material");
+                break;
+            
+            case "Cylinder":
+                advancedData.musicalRole = ShapeRole.Bass;
+                advancedData.materialType = MaterialType.Metallic;
+                advancedData.animationType = AnimationType.Spin;
+                advancedData.intensity = 0.6f;
+                advancedData.energy = 0.4f; // Lower energy for bass
+                advancedData.duration = 6f; // Longer sustain for bass
+                Debug.Log("Applied Cylinder defaults: Bass role, Metallic material");
+                break;
+            
+            default:
+                // Fallback defaults
+                advancedData.musicalRole = ShapeRole.Harmony;
+                advancedData.materialType = MaterialType.Smooth;
+                advancedData.animationType = AnimationType.None;
+                break;
         }
     }
     private bool IsPanelOpen()
@@ -298,5 +369,117 @@ public class SelectableShape : MonoBehaviour
         public Vector3 position;
         public Quaternion rotation;
         public string objectName;
+    }
+    [System.Serializable]
+    public class AdvancedShapeData
+    {
+        [Header("Basic Properties")]
+        public Color color;
+        public float size;
+        public string shapeType;
+    
+        [Header("Spatial Properties")]
+        public Vector3 position;
+        public float height;
+        public float distanceFromCenter;
+    
+        [Header("Timing Properties")]
+        public float spawnTime;
+        public float duration = 4f; // Default 4 beats
+        public bool isLooping = true;
+        public float beatOffset;
+    
+        [Header("Movement Properties")]
+        public Vector3 velocity;
+        public float rotationSpeed;
+        public AnimationType animationType = AnimationType.None;
+    
+        [Header("Intensity Properties")]
+        [Range(0f, 1f)] public float intensity = 0.5f;
+        [Range(0f, 1f)] public float energy = 0.5f;
+        public PulseType pulseType = PulseType.None;
+    
+        [Header("Material Properties")]
+        public MaterialType materialType = MaterialType.Smooth;
+        [Range(0f, 1f)] public float roughness = 0f;
+        [Range(0f, 1f)] public float transparency = 0f;
+        public bool isGlowing = false;
+    
+        [Header("Musical Properties")]
+        public string groupID = "default";
+        public ShapeRole musicalRole = ShapeRole.Harmony;
+        public List<string> connectedShapeIDs;
+        [Range(0f, 1f)] public float harmony = 0.5f;
+    }
+
+    public enum AnimationType { None, Bounce, Spin, Float, Pulse }
+    public enum PulseType { None, Slow, Fast, Irregular }
+    public enum MaterialType { Smooth, Rough, Metallic, Glass, Wood, Fabric }
+    public enum ShapeRole { Lead, Harmony, Rhythm, Bass, Percussion, Ambient }
+    
+    // New methods for advanced properties
+    public void UpdateIntensity(float intensity)
+    {
+        advancedData.intensity = intensity;
+        Debug.Log($"Updated {gameObject.name} intensity to: {intensity}");
+        // Visual feedback could be added here (brightness, glow, etc.)
+    }
+    
+    public void UpdateEnergy(float energy)
+    {
+        advancedData.energy = energy;
+        Debug.Log($"Updated {gameObject.name} energy to: {energy}");
+        // Could affect animation speed, particle effects, etc.
+    }
+    
+    public void UpdateRoughness(float roughness)
+    {
+        advancedData.roughness = roughness;
+        Debug.Log($"Updated {gameObject.name} roughness to: {roughness}");
+        // Could affect material appearance
+    }
+    
+    public void UpdateDuration(float duration)
+    {
+        advancedData.duration = duration;
+        Debug.Log($"Updated {gameObject.name} duration to: {duration}");
+    }
+    
+    public void UpdateMusicalRole(ShapeRole role)
+    {
+        Debug.Log($"UpdateMusicalRole called: OLD={advancedData.musicalRole}, NEW={role}");
+        advancedData.musicalRole = role;
+        Debug.Log($"Updated {gameObject.name} musical role to: {advancedData.musicalRole}");
+    }
+
+    public void UpdateAnimationType(AnimationType animType)
+    {
+        Debug.Log($"UpdateAnimationType called: OLD={advancedData.animationType}, NEW={animType}");
+        advancedData.animationType = animType;
+        Debug.Log($"Updated {gameObject.name} animation to: {advancedData.animationType}");
+    }
+
+    public void UpdateMaterialType(MaterialType materialType)
+    {
+        Debug.Log($"UpdateMaterialType called: OLD={advancedData.materialType}, NEW={materialType}");
+        advancedData.materialType = materialType;
+        Debug.Log($"Updated {gameObject.name} material to: {advancedData.materialType}");
+    }
+    
+    public void UpdateLooping(bool isLooping)
+    {
+        advancedData.isLooping = isLooping;
+        Debug.Log($"Updated {gameObject.name} looping to: {isLooping}");
+    }
+    
+    // Enhanced data collection for music generation
+    public AdvancedShapeData GetAdvancedShapeData()
+    {
+        // Update position data
+        advancedData.position = transform.position;
+        advancedData.height = transform.position.y;
+        advancedData.distanceFromCenter = Vector3.Distance(transform.position, Vector3.zero);
+        
+        return advancedData;
     }
 }

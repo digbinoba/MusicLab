@@ -6,7 +6,7 @@ public class ShapeSpawner : MonoBehaviour
 {
     [SerializeField] private GameObject spherePrefab;
     [SerializeField] private GameObject cubePrefab;
-        
+    [SerializeField] private GameObject cylinderPrefab;
 
     void Start() 
     {
@@ -54,7 +54,23 @@ public class ShapeSpawner : MonoBehaviour
             }
         }
     }
-    
+    public void SpawnCylinder() 
+    {
+        Debug.Log("Spawning Cylinder!");
+        Transform interactor = FindActiveInteractor();
+        if (interactor != null)
+        {
+            Vector3 spawnPos = interactor.position + interactor.forward * 0.2f;
+            GameObject newShape = Instantiate(cylinderPrefab, spawnPos, Quaternion.identity);
+            
+            if (newShape.GetComponent<SelectableShape>() == null)
+            {
+                newShape.AddComponent<SelectableShape>();
+            }
+            
+            Debug.Log("Cylinder spawned: " + newShape.name);
+        }
+    }
     private Transform FindActiveInteractor()
     {
         // Look for hand or controller objects
