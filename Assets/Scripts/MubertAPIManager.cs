@@ -41,6 +41,7 @@ public class MubertAPIManager : MonoBehaviour
     [SerializeField] private TextMeshProUGUI responseText;
     [SerializeField] private TextMeshProUGUI progressText;
     
+    private bool isCurrentlyDownloading = false;
     void Awake()
     {
         if (Instance == null)
@@ -497,6 +498,8 @@ public class MubertAPIManager : MonoBehaviour
     
     private void HandleSuccessfulResponse(string responseText)
     {
+        isCurrentlyDownloading = false; // Reset for new generation
+        
         UpdateDebugStatus("✅ Request Accepted", Color.green);
         UpdateDebugResponse(responseText);
         UpdateDebugProgress("Music generation started - waiting for completion...");
@@ -590,20 +593,20 @@ public class MubertAPIManager : MonoBehaviour
     
         UpdateDebugProgress("🔄 Polling for generation status...");
     
-        while (timeWaited < maxWaitTime && !generationComplete)
+        while (timeWaited < maxWaitTime && !isCurrentlyDownloading)
         {
             yield return new WaitForSeconds(pollingInterval);
             timeWaited += pollingInterval;
-        
+    
             // Make a NEW API call to check current status
             yield return StartCoroutine(CheckGenerationStatus(sessionId));
-        
-            // Note: CheckGenerationStatus will start download if done, 
-            // but we need a way to signal completion. For now, we'll rely on timeout.
-        
-            // Update progress
-            int timeRemaining = Mathf.RoundToInt(maxWaitTime - timeWaited);
-            UpdateDebugProgress($"⏳ Waiting for generation... {timeRemaining}s remaining");
+    
+            // Update progress only if still polling
+            if (!isCurrentlyDownloading)
+            {
+                int timeRemaining = Mathf.RoundToInt(maxWaitTime - timeWaited);
+                UpdateDebugProgress($"⏳ Waiting for generation... {timeRemaining}s remaining");
+            }
         }
     
         // Only show timeout if we didn't find completion
@@ -614,7 +617,7 @@ public class MubertAPIManager : MonoBehaviour
             Debug.LogError("Music generation timed out");
         }
     }
-    private IEnumerator CheckGenerationStatus(string sessionId)
+private IEnumerator CheckGenerationStatus(string sessionId)
 {
     Debug.Log($"Checking status for session: {sessionId}");
     
@@ -642,18 +645,31 @@ public class MubertAPIManager : MonoBehaviour
                     {
                         Debug.Log($"Found matching track! Status: {track.generations[0].status}");
                         
+                        // ONLY set the flag if the track is actually done AND has a URL
                         if (track.generations[0].status == "done" && !string.IsNullOrEmpty(track.generations[0].url))
                         {
-                            UpdateDebugStatus("🎵 Music Generated!", Color.green);
-                            UpdateDebugProgress("Music generation complete! Starting download...");
-                            
-                            // Start download process
-                            StartCoroutine(DownloadAndPlayGeneratedMusic(track.generations[0].url, sessionId));
-                            yield break; // Exit polling
+                            // Add this check to prevent multiple downloads
+                            if (!isCurrentlyDownloading)
+                            {
+                                isCurrentlyDownloading = true; // Set flag to prevent repeats
+            
+                                UpdateDebugStatus("🎵 Music Generated!", Color.green);
+                                UpdateDebugProgress("Music generation complete! Starting download...");
+            
+                                // Start download process
+                                StartCoroutine(DownloadAndPlayGeneratedMusic(track.generations[0].url, sessionId));
+                            }
+                            else
+                            {
+                                Debug.Log("Download already in progress, skipping...");
+                            }
+        
+                            yield break; // Exit polling for this session
                         }
                         else
                         {
                             Debug.Log($"Still processing... Status: {track.generations[0].status}");
+                            // DON'T set isCurrentlyDownloading here - let polling continue
                         }
                         break;
                     }
@@ -670,7 +686,7 @@ public class MubertAPIManager : MonoBehaviour
         }
     }
 }
-    private IEnumerator DownloadAndPlayGeneratedMusic(string audioURL, string sessionId)
+private IEnumerator DownloadAndPlayGeneratedMusic(string audioURL, string sessionId)
 {
     UpdateDebugProgress("📥 Downloading generated music...");
     
@@ -681,15 +697,25 @@ public class MubertAPIManager : MonoBehaviour
         Debug.Log($"Session ID: {sessionId}");
     }
     
+    // Try method 1: UnityWebRequestMultimedia
+    yield return StartCoroutine(TryDownloadWithMultimedia(audioURL, sessionId));
+}
+
+private IEnumerator TryDownloadWithMultimedia(string audioURL, string sessionId)
+{
+    Debug.Log("Attempting download with UnityWebRequestMultimedia...");
+    
     using (UnityWebRequest audioRequest = UnityWebRequestMultimedia.GetAudioClip(audioURL, AudioType.MPEG))
     {
-        while (!audioRequest.isDone)
-        {
-            UpdateDebugProgress($"📥 Downloading... {audioRequest.downloadProgress * 100:F0}%");
-            yield return null;
-        }
+        audioRequest.timeout = 30;
         
+        // Send the request
         yield return audioRequest.SendWebRequest();
+        
+        Debug.Log($"Download result: {audioRequest.result}");
+        Debug.Log($"Response code: {audioRequest.responseCode}");
+        Debug.Log($"Download progress: {audioRequest.downloadProgress}");
+        Debug.Log($"Error: {audioRequest.error ?? "None"}");
         
         if (audioRequest.result == UnityWebRequest.Result.Success)
         {
@@ -697,37 +723,163 @@ public class MubertAPIManager : MonoBehaviour
             
             if (clip != null)
             {
-                UpdateDebugStatus("✅ Download Complete!", Color.green);
-                UpdateDebugProgress("Music downloaded successfully!");
-                
-                // Save locally
-                yield return StartCoroutine(SaveAudioClipLocally(clip, sessionId));
-                
-                // Countdown and play
-                yield return StartCoroutine(CountdownAndPlay(clip));
-                
-                if (enableEnhancedLogging)
-                {
-                    Debug.Log("=== MUSIC DOWNLOAD COMPLETE ===");
-                    Debug.Log($"Audio clip length: {clip.length:F2} seconds");
-                    Debug.Log($"Audio clip frequency: {clip.frequency} Hz");
-                    Debug.Log($"Audio clip channels: {clip.channels}");
-                }
+                Debug.Log("✅ Download successful with Multimedia method!");
+                yield return StartCoroutine(ProcessSuccessfulDownload(clip, sessionId));
+                yield break;
             }
             else
             {
-                UpdateDebugStatus("❌ Audio Processing Error", Color.red);
-                UpdateDebugProgress("Failed to create AudioClip from downloaded data");
+                Debug.LogError("AudioClip is null despite successful download");
+            }
+        }
+        else
+        {
+            Debug.LogError($"Multimedia download failed: {audioRequest.error}");
+        }
+    }
+    
+    // If multimedia failed, try raw download
+    Debug.Log("Multimedia failed, trying raw download...");
+    yield return StartCoroutine(TryDownloadRaw(audioURL, sessionId));
+}
+
+private IEnumerator TryDownloadRaw(string audioURL, string sessionId)
+{
+    Debug.Log("Attempting raw download...");
+    
+    using (UnityWebRequest rawRequest = UnityWebRequest.Get(audioURL))
+    {
+        rawRequest.timeout = 30;
+        
+        while (!rawRequest.isDone)
+        {
+            float progress = rawRequest.downloadProgress * 100f;
+            UpdateDebugProgress($"📥 Raw downloading... {progress:F0}%");
+            Debug.Log($"Raw download progress: {progress:F1}%");
+            yield return null;
+        }
+        
+        yield return rawRequest.SendWebRequest();
+        
+        Debug.Log($"Raw download result: {rawRequest.result}");
+        Debug.Log($"Raw response code: {rawRequest.responseCode}");
+        Debug.Log($"Raw error: {rawRequest.error ?? "None"}");
+        
+        if (rawRequest.result == UnityWebRequest.Result.Success)
+        {
+            byte[] audioData = rawRequest.downloadHandler.data;
+            Debug.Log($"Downloaded {audioData.Length} bytes of audio data");
+            
+            // Save raw data to file first
+            yield return StartCoroutine(SaveRawAudioData(audioData, sessionId));
+            
+            // Try to create AudioClip from raw data
+            AudioClip clip = CreateAudioClipFromMP3Data(audioData, sessionId);
+            
+            if (clip != null)
+            {
+                Debug.Log("✅ Successfully created AudioClip from raw data!");
+                yield return StartCoroutine(ProcessSuccessfulDownload(clip, sessionId));
+            }
+            else
+            {
+                UpdateDebugStatus("❌ Could not create AudioClip", Color.red);
+                UpdateDebugProgress("Audio downloaded but couldn't create playable clip");
                 Debug.LogError("Failed to create AudioClip from downloaded data");
             }
         }
         else
         {
             UpdateDebugStatus("❌ Download Failed", Color.red);
-            UpdateDebugResponse($"Download Error: {audioRequest.error}");
-            UpdateDebugProgress("Failed to download generated music");
-            Debug.LogError($"Music download failed: {audioRequest.error}");
+            UpdateDebugProgress($"Download failed: {rawRequest.error}");
+            Debug.LogError($"Raw download failed: {rawRequest.error}");
         }
+    }
+}
+
+private IEnumerator SaveRawAudioData(byte[] audioData, string sessionId)
+{
+    bool saveSuccess = SaveRawAudioDataToFile(audioData, sessionId);
+    
+    if (saveSuccess)
+    {
+        string timestamp = System.DateTime.Now.ToString("yyyyMMdd_HHmmss");
+        string filename = $"GeneratedMusic_{sessionId}_{timestamp}.mp3";
+        UpdateDebugProgress($"💾 Raw MP3 saved: {filename}");
+    }
+    else
+    {
+        UpdateDebugProgress("❌ Failed to save raw MP3");
+    }
+    
+    yield return null;
+}
+
+private bool SaveRawAudioDataToFile(byte[] audioData, string sessionId)
+{
+    try
+    {
+        string timestamp = System.DateTime.Now.ToString("yyyyMMdd_HHmmss");
+        string filename = $"GeneratedMusic_{sessionId}_{timestamp}.mp3";
+        string filePath = System.IO.Path.Combine(Application.persistentDataPath, filename);
+        
+        System.IO.File.WriteAllBytes(filePath, audioData);
+        
+        Debug.Log($"Raw MP3 saved: {filePath}");
+        return true;
+    }
+    catch (System.Exception e)
+    {
+        Debug.LogError($"Failed to save raw audio data: {e.Message}");
+        return false;
+    }
+}
+
+private AudioClip CreateAudioClipFromMP3Data(byte[] mp3Data, string sessionId)
+{
+    try
+    {
+        // For MP3, Unity's built-in methods might not work well
+        // We'll try a simple approach first
+        Debug.Log("Attempting to create AudioClip from MP3 data...");
+        
+        // This might not work for MP3, but worth trying
+        AudioClip clip = AudioClip.Create($"GeneratedMusic_{sessionId}", 
+            44100, // Sample rate
+            2,     // Channels
+            44100, // Frequency
+            false  // Stream
+        );
+        
+        // Note: This is a placeholder - MP3 decoding in Unity is complex
+        // For now, we'll just save the file and note that it was downloaded
+        Debug.LogWarning("MP3 to AudioClip conversion not fully implemented");
+        return null;
+    }
+    catch (System.Exception e)
+    {
+        Debug.LogError($"Failed to create AudioClip from MP3 data: {e.Message}");
+        return null;
+    }
+}
+
+private IEnumerator ProcessSuccessfulDownload(AudioClip clip, string sessionId)
+{
+    UpdateDebugStatus("✅ Download Complete!", Color.green);
+    UpdateDebugProgress("Music downloaded successfully!");
+    
+    // Save as WAV if possible
+    yield return StartCoroutine(SaveAudioClipLocally(clip, sessionId));
+    
+    // Countdown and play
+    yield return StartCoroutine(CountdownAndPlay(clip));
+    
+    if (enableEnhancedLogging)
+    {
+        Debug.Log("=== MUSIC DOWNLOAD COMPLETE ===");
+        Debug.Log($"Audio clip length: {clip.length:F2} seconds");
+        Debug.Log($"Audio clip frequency: {clip.frequency} Hz");
+        Debug.Log($"Audio clip channels: {clip.channels}");
     }
 }
     private IEnumerator CountdownAndPlay(AudioClip clip)
