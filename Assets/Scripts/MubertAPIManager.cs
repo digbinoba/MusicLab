@@ -886,6 +886,12 @@ private IEnumerator ProcessSuccessfulDownload(AudioClip clip, string sessionId)
     {
         UpdateDebugProgress("🎵 Ready to play! Starting countdown...");
     
+        // ACTIVATE DISCO BALL!
+        DiscoBallController discoBall = FindObjectOfType<DiscoBallController>();
+        if (discoBall != null)
+        {
+            discoBall.ActivateDiscoBall();
+        }
         for (int i = 5; i > 0; i--)
         {
             UpdateDebugStatus($"▶️ Playing in {i}...", Color.cyan);
@@ -900,6 +906,12 @@ private IEnumerator ProcessSuccessfulDownload(AudioClip clip, string sessionId)
         audioSource.Play();
     
         Debug.Log("🎵 Generated music is now playing!");
+        // Optional: Hide disco ball when music ends
+        yield return new WaitForSeconds(clip.length);
+        if (discoBall != null)
+        {
+            discoBall.DeactivateDiscoBall();
+        }
     }
 
     private IEnumerator SaveAudioClipLocally(AudioClip clip, string sessionId)
